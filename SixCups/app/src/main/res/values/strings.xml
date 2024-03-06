@@ -16,4 +16,11 @@
 
 <resources>
     <string name="app_name">SixCups</string>
+
+    <string name="social">Social</string>
+    <string name="mental">Mental</string>
+    <string name="physical">Physical</string>
+    <string name="professional">Professional</string>
+    <string name="spiritual">Spiritual</string>
+    <string name="cultural">Cultural</string>
 </resources>
