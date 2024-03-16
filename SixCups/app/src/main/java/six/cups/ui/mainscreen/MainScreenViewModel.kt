@@ -10,7 +10,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import six.cups.R
 import six.cups.data.MainScreenRepository
-import six.cups.ui.mainscreen.MainScreenUiState.Success
 import javax.inject.Inject
 
 @HiltViewModel
@@ -18,20 +17,36 @@ class MainScreenViewModel @Inject constructor(
     private val mainScreenRepository: MainScreenRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow<MainScreenUiState>(Success(HealthAspectDisplay.entries))
+    private val _uiState = MutableStateFlow(
+        MainScreenUiState(
+            aspects = HealthAspectDisplay.entries,
+            journalEntry = null
+        )
+    )
     val uiState = _uiState.asStateFlow()
 
-    fun addMainScreen(index: Int) {
+    fun showJournalPrompt(aspect: HealthAspectDisplay) {
         viewModelScope.launch {
-            // TODO
+            _uiState.value = _uiState.value.copy(journalEntry = JournalEntryUiState.Success("kenna success :) ${aspect.name}"))
+        }
+    }
+
+    fun hideJournalPrompt() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(journalEntry = null)
         }
     }
 }
 
-sealed interface MainScreenUiState {
-    object Loading : MainScreenUiState
-    data class Error(val throwable: Throwable) : MainScreenUiState
-    data class Success(val aspects: List<HealthAspectDisplay>) : MainScreenUiState
+data class MainScreenUiState (
+    val aspects: List<HealthAspectDisplay>,
+    val journalEntry: JournalEntryUiState?
+)
+
+sealed interface JournalEntryUiState {
+    object Loading : JournalEntryUiState
+    data class Error(val throwable: Throwable) : JournalEntryUiState
+    data class Success(val message: String) : JournalEntryUiState
 }
 
 enum class HealthAspectDisplay(
