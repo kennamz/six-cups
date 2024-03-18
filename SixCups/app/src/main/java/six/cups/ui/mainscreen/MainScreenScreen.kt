@@ -12,21 +12,22 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import six.cups.R
@@ -39,28 +40,33 @@ fun MainScreenScreen(
     viewModel: MainScreenViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val journalState by viewModel.journalState.collectAsStateWithLifecycle()
 
-    MainScreenScreen(
+    MainScreen(
+        aspects = viewModel.healthAspects,
         uiState = uiState,
+        onAspectTapped = viewModel::showJournalPrompt,
+        journalState = journalState,
         onVeilTapped = viewModel::hideJournalPrompt,
-        onAspectTapped = viewModel::showJournalPrompt
     )
 }
 
 @Composable
-internal fun MainScreenScreen(
-    uiState: MainScreenUiState,
-    onVeilTapped: () -> Unit,
+internal fun MainScreen(
+    aspects: List<HealthAspectDisplay>,
+    uiState: MainUiState,
     onAspectTapped: (aspect: HealthAspectDisplay) -> Unit,
+    journalState: JournalEntryUiState,
+    onVeilTapped: () -> Unit,
 ) {
     Box {
         AspectButtons(
-            aspects = uiState.aspects,
+            aspects = aspects,
             onTapped = onAspectTapped
         )
 
         AnimatedVisibility(
-            visible = uiState.journalEntry != null,
+            visible = uiState is MainUiState.JournalEntry,
             enter = fadeIn(),
             exit = fadeOut()
         ) {
@@ -73,12 +79,10 @@ internal fun MainScreenScreen(
                     ),
                 contentAlignment = Alignment.Center
             ) {
-                uiState.journalEntry?.let { journalEntry ->
-                    JournalPromptDialog(
-                        modifier = Modifier.blockBehindClicks(),
-                        journalEntryState = journalEntry
-                    )
-                }
+                JournalPromptDialog(
+                    modifier = Modifier.blockBehindClicks(),
+                    journalEntryState = journalState
+                )
             }
         }
     }
@@ -89,16 +93,35 @@ internal fun JournalPromptDialog(
     journalEntryState: JournalEntryUiState,
     modifier: Modifier = Modifier
 ) {
-    when(journalEntryState) {
-        is JournalEntryUiState.Success -> JournalEntrySuccess(
-            successState = journalEntryState,
-            modifier = modifier
-        )
-        is JournalEntryUiState.Loading -> {
-            TODO()
-        }
-        is JournalEntryUiState.Error -> {
-            TODO()
+    Column(
+        modifier = modifier
+            .padding(dimensionResource(id = R.dimen.dialog_screen_margin))
+            .fillMaxWidth()
+            .background(
+                color = MaterialTheme.colorScheme.background,
+                shape = RoundedCornerShape(dimensionResource(id = R.dimen.dialog_rounded_corner_radius))
+            )
+            .padding(dimensionResource(id = R.dimen.medium_padding))
+    ) {
+        when (journalEntryState) {
+            is JournalEntryUiState.Success -> JournalEntrySuccess(
+                successState = journalEntryState,
+                modifier = modifier
+            )
+
+            is JournalEntryUiState.Loading -> {
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .width(dimensionResource(id = R.dimen.progress_spinner_width))
+                        .align(Alignment.CenterHorizontally),
+                    color = MaterialTheme.colorScheme.onBackground,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                )
+            }
+
+            is JournalEntryUiState.Error -> {
+                TODO()
+            }
         }
     }
 }
@@ -108,15 +131,8 @@ internal fun JournalEntrySuccess(
     successState: JournalEntryUiState.Success,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .background(
-                color = MaterialTheme.colorScheme.background,
-                shape = RoundedCornerShape(10.dp)
-            )
-            .padding(20.dp)
-    ) {
-        Text(text = successState.message)
+    successState.messages.forEach { message ->
+        Text(text = message)
     }
 }
 
@@ -160,13 +176,12 @@ internal fun AspectButtons(
 @Composable
 private fun AspectsPreview() {
     MyApplicationTheme {
-        MainScreenScreen(
-            MainScreenUiState(
-                aspects = HealthAspectDisplay.entries,
-                journalEntry = null
-            ),
-            onVeilTapped = {},
-            onAspectTapped = {}
+        MainScreen(
+            aspects = HealthAspectDisplay.entries,
+            uiState = MainUiState.AspectButtons,
+            onAspectTapped = {},
+            journalState = JournalEntryUiState.Loading,
+            onVeilTapped = {}
         )
     }
 }
@@ -175,13 +190,12 @@ private fun AspectsPreview() {
 @Composable
 private fun JournalPromptPreview() {
     MyApplicationTheme {
-        MainScreenScreen(
-            MainScreenUiState(
-                aspects = HealthAspectDisplay.entries,
-                journalEntry = JournalEntryUiState.Success("kenna's preview message")
-            ),
-            onVeilTapped = {},
-            onAspectTapped = {}
+        MainScreen(
+            aspects = HealthAspectDisplay.entries,
+            uiState = MainUiState.JournalEntry(currentAspect = HealthAspectDisplay.Professional),
+            onAspectTapped = {},
+            journalState = JournalEntryUiState.Success(listOf("entry 1", "entry 2", "this is the third entry")),
+            onVeilTapped = {}
         )
     }
 }

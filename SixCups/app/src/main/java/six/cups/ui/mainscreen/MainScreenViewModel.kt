@@ -6,7 +6,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import six.cups.R
 import six.cups.data.MainScreenRepository
@@ -16,37 +21,46 @@ import javax.inject.Inject
 class MainScreenViewModel @Inject constructor(
     private val mainScreenRepository: MainScreenRepository
 ) : ViewModel() {
+    val healthAspects = HealthAspectDisplay.entries
 
-    private val _uiState = MutableStateFlow(
-        MainScreenUiState(
-            aspects = HealthAspectDisplay.entries,
-            journalEntry = null
-        )
-    )
+    private val _uiState = MutableStateFlow<MainUiState>(MainUiState.AspectButtons)
     val uiState = _uiState.asStateFlow()
+
+    val journalState: StateFlow<JournalEntryUiState> = mainScreenRepository
+        .mainScreens.map<List<String>, JournalEntryUiState>(JournalEntryUiState::Success)
+        .catch { emit(JournalEntryUiState.Error(it)) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), JournalEntryUiState.Loading)
+
+    fun addJournalEntry(entry: String) {
+        viewModelScope.launch {
+            mainScreenRepository.add(entry)
+        }
+    }
 
     fun showJournalPrompt(aspect: HealthAspectDisplay) {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(journalEntry = JournalEntryUiState.Success("kenna success :) ${aspect.name}"))
+            _uiState.value = MainUiState.JournalEntry(aspect)
         }
     }
 
     fun hideJournalPrompt() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(journalEntry = null)
+            _uiState.value = MainUiState.AspectButtons
         }
     }
 }
 
-data class MainScreenUiState (
-    val aspects: List<HealthAspectDisplay>,
-    val journalEntry: JournalEntryUiState?
-)
+sealed interface MainUiState {
+    data object AspectButtons : MainUiState
+    data class JournalEntry(
+        val currentAspect: HealthAspectDisplay
+    ) : MainUiState
+}
 
 sealed interface JournalEntryUiState {
-    object Loading : JournalEntryUiState
+    data object Loading : JournalEntryUiState
     data class Error(val throwable: Throwable) : JournalEntryUiState
-    data class Success(val message: String) : JournalEntryUiState
+    data class Success(val messages: List<String>) : JournalEntryUiState
 }
 
 enum class HealthAspectDisplay(
