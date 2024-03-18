@@ -5,6 +5,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,8 +20,11 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
@@ -47,6 +51,7 @@ fun MainScreenScreen(
         uiState = uiState,
         onAspectTapped = viewModel::showJournalPrompt,
         journalState = journalState,
+        journalEntryQuestions = viewModel.journalEntryQuestions,
         onVeilTapped = viewModel::hideJournalPrompt,
     )
 }
@@ -57,6 +62,7 @@ internal fun MainScreen(
     uiState: MainUiState,
     onAspectTapped: (aspect: HealthAspectDisplay) -> Unit,
     journalState: JournalEntryUiState,
+    journalEntryQuestions: List<JournalEntryQuestion>,
     onVeilTapped: () -> Unit,
 ) {
     Box {
@@ -81,6 +87,7 @@ internal fun MainScreen(
             ) {
                 JournalPromptDialog(
                     modifier = Modifier.blockBehindClicks(),
+                    journalEntryQuestions = journalEntryQuestions,
                     journalEntryState = journalState
                 )
             }
@@ -91,6 +98,7 @@ internal fun MainScreen(
 @Composable
 internal fun JournalPromptDialog(
     journalEntryState: JournalEntryUiState,
+    journalEntryQuestions: List<JournalEntryQuestion>,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -105,8 +113,11 @@ internal fun JournalPromptDialog(
     ) {
         when (journalEntryState) {
             is JournalEntryUiState.Success -> JournalEntrySuccess(
-                successState = journalEntryState,
-                modifier = modifier
+                successState = journalEntryState
+            )
+
+            is JournalEntryUiState.NewEntry -> NewJournalEntry(
+                questions = journalEntryQuestions
             )
 
             is JournalEntryUiState.Loading -> {
@@ -120,8 +131,40 @@ internal fun JournalPromptDialog(
             }
 
             is JournalEntryUiState.Error -> {
-                TODO()
+                Text(text = stringResource(id = R.string.unknown_error))
             }
+        }
+    }
+}
+
+@Composable
+internal fun NewJournalEntry(
+    questions: List<JournalEntryQuestion>,
+    modifier: Modifier = Modifier
+) {
+    val entries = remember { mutableStateMapOf(*questions.map { it to "" }.toTypedArray()) }
+
+    questions.forEach { questionType ->
+        Text(text = stringResource(id = questionType.questionStringId))
+        
+        TextField(
+            modifier = Modifier
+                .padding(bottom = dimensionResource(id = R.dimen.small_medium_padding))
+                .fillMaxWidth(),
+            value = entries.getValue(questionType),
+            onValueChange = { entries[questionType] = it }
+        )
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth(),
+        horizontalArrangement = Arrangement.End
+    ) {
+        Button(
+            onClick = { TODO() }
+        ) {
+            Text("Save")
         }
     }
 }
@@ -181,6 +224,7 @@ private fun AspectsPreview() {
             uiState = MainUiState.AspectButtons,
             onAspectTapped = {},
             journalState = JournalEntryUiState.Loading,
+            journalEntryQuestions = JournalEntryQuestion.entries,
             onVeilTapped = {}
         )
     }
@@ -195,6 +239,22 @@ private fun JournalPromptPreview() {
             uiState = MainUiState.JournalEntry(currentAspect = HealthAspectDisplay.Professional),
             onAspectTapped = {},
             journalState = JournalEntryUiState.Success(listOf("entry 1", "entry 2", "this is the third entry")),
+            journalEntryQuestions = JournalEntryQuestion.entries,
+            onVeilTapped = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 480)
+@Composable
+private fun AddNewJournalEntryPreview() {
+    MyApplicationTheme {
+        MainScreen(
+            aspects = HealthAspectDisplay.entries,
+            uiState = MainUiState.JournalEntry(currentAspect = HealthAspectDisplay.Mental),
+            onAspectTapped = {},
+            journalState = JournalEntryUiState.NewEntry,
+            journalEntryQuestions = JournalEntryQuestion.entries,
             onVeilTapped = {}
         )
     }

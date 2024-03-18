@@ -22,6 +22,7 @@ class MainScreenViewModel @Inject constructor(
     private val mainScreenRepository: MainScreenRepository
 ) : ViewModel() {
     val healthAspects = HealthAspectDisplay.entries
+    val journalEntryQuestions = JournalEntryQuestion.entries
 
     private val _uiState = MutableStateFlow<MainUiState>(MainUiState.AspectButtons)
     val uiState = _uiState.asStateFlow()
@@ -58,9 +59,21 @@ sealed interface MainUiState {
 }
 
 sealed interface JournalEntryUiState {
+    data object NewEntry : JournalEntryUiState
     data object Loading : JournalEntryUiState
     data class Error(val throwable: Throwable) : JournalEntryUiState
     data class Success(val messages: List<String>) : JournalEntryUiState
+}
+
+enum class JournalEntryQuestion(
+    @StringRes
+    val questionStringId : Int
+) {
+    Doing(R.string.question_doing),
+    Goals(R.string.question_goal),
+    Importance(R.string.question_importance),
+    Improve(R.string.question_improve),
+    Effects(R.string.question_effects)
 }
 
 enum class HealthAspectDisplay(
