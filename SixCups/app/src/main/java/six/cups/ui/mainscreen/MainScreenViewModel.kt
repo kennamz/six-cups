@@ -39,27 +39,27 @@ class MainScreenViewModel @Inject constructor(
     }
 
     fun showJournalPrompt(aspect: HealthAspectDisplay) {
-        viewModelScope.launch {
-            _uiState.value = MainUiState.JournalEntry(aspect)
-        }
+        _uiState.value = MainUiState.JournalEntry(aspect, writingNewEntry = true)
     }
 
     fun hideJournalPrompt() {
-        viewModelScope.launch {
-            _uiState.value = MainUiState.AspectButtons
-        }
+        _uiState.value = MainUiState.AspectButtons
+    }
+
+    fun viewEntriesButtonClicked() {
+        _uiState.value = (_uiState.value as MainUiState.JournalEntry).copy(writingNewEntry = false)
     }
 }
 
 sealed interface MainUiState {
     data object AspectButtons : MainUiState
     data class JournalEntry(
-        val currentAspect: HealthAspectDisplay
+        val currentAspect: HealthAspectDisplay,
+        val writingNewEntry: Boolean
     ) : MainUiState
 }
 
 sealed interface JournalEntryUiState {
-    data object NewEntry : JournalEntryUiState
     data object Loading : JournalEntryUiState
     data class Error(val throwable: Throwable) : JournalEntryUiState
     data class Success(val messages: List<String>) : JournalEntryUiState
